@@ -1,0 +1,140 @@
+#!/bin/bash
+# this points to the shared folder that you have on docker-compose
+DB_SHARED_FOLDER="tmp/db/"
+MAIN_APP="app"
+
+function build() {
+  set -e
+  read -p "Delete DB folder to start from scratch? (y/n): " DBDEL
+  read -p "Create DB and migrations on startup? (y/n): " DBCREATE
+  read -p "Want to run the seeds after the creation? (y/n): " DBSEED
+  if [ "$DBDEL" == "y" ]
+  then
+    echo "Deleting DB folder..."
+    sudo rm -rf ${DB_SHARED_FOLDER}
+    echo "done."
+  fi
+  docker-compose down
+  docker-compose up -d --build --force-recreate
+  if [ "$DBCREATE" == "y" ]
+  then
+    sleep 10
+    bash $0 create-db
+  fi
+  if [  "$DBSEED" == "y" ]; then
+    bash $0 seed
+    bash $0 clear-tmp
+  fi
+}
+
+function start() {
+  docker-compose up -d
+}
+
+function status() {
+  docker-compose ps
+}
+
+function stop() {
+  docker-compose down
+}
+
+function create_db() {
+  docker-compose exec ${MAIN_APP} rails db:create
+  docker-compose exec ${MAIN_APP} rails db:migrate
+}
+
+function path {
+  echo "exporting path"
+  export PATH=$PATH:$(pwd)
+  echo "You can now use the CLI as a native command"
+  exec $(which bash)
+}
+
+function clear-tmp {
+  $0 run rails tmp:cache:clear
+}
+function logs() {
+  docker-compose logs -f
+}
+
+function seed() {
+  bash $0 run rails db:seed
+  bash $0 reindex
+}
+
+function expose() {
+  ngrok http 80
+}
+
+function console() {
+  bash $0 run rails c
+}
+
+case $1 in
+  build)
+    build
+  ;;
+  start)
+    start
+  ;;
+  status)
+    status
+  ;;
+  stop)
+    stop
+  ;;
+  create-db)
+    create_db
+  ;;
+  run)
+    shift
+    docker-compose exec ${MAIN_APP} $@
+  ;;
+  restart)
+    stop
+    start
+  ;;
+  logs)
+    logs
+  ;;
+  fix-perms)
+    sudo chown -R $USER:$USER app/ db/ public/ config/ lib/
+  ;;
+  path)
+    path
+  ;;
+  seed)
+    seed
+  ;;
+  expose)
+    expose
+  ;;
+  restart-mac)
+    $0 restart && sleep 15 && $0 reindex
+  ;;
+  clear-tmp)
+    clear-tmp
+  ;;
+  console)
+    console
+  ;;
+  *)
+    echo "
+    Usage:
+    `basename $0` path                Export cli to your shell
+    `basename $0` build               You will need this if you want to build from scratch
+    `basename $0` status              check containers status
+    `basename $0` start/stop          Start the project by using docker-compose
+    `basename $0` restart             restart
+    `basename $0` restart-mac         restart and reindex
+    `basename $0` console             run rails console
+    `basename $0` clear-tmp           Clear tmp files like js and assets
+    `basename $0` logs                Tail logs
+    `basename $0` create-db           Run db create and migrations
+    `basename $0` run command here    Run any command inside the container
+    `basename $0` fix-perms           Experimental - fix code permission issues
+    `basename $0` seed                Seed DB
+    `basename $0` expose              expose with ngrok on port 80"
+  ;;
+esac
