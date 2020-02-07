@@ -10,7 +10,7 @@ RUN apt install -y nodejs
 # cleanup
 RUN rm -rf /var/lib/apt/lists/*
 
-# Create app user for correct file permissions
+# The idea here is that you use the cli to build this dockerfile so your user id is set
 ARG US_ID=1000
 ARG GR_ID=1000
 ARG USERNAME=appuser
