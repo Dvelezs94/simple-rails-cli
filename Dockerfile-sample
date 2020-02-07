@@ -28,4 +28,4 @@ RUN bundle install
 # Prevent server pid from saving
 RUN rm -f tmp/pids/server.pid
 
-CMD ["/usr/bin/supervisord"]
+CMD bundle exec rails s -p 3000 -b '0.0.0.0'
