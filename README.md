@@ -19,4 +19,3 @@ This is a project that aims to help you manage your local environment based on R
 ## Considerations
 
 - Make sure your main container is called `app`, or update the script as you need
-- Change the `DB_SHARED_FOLDER` folder in the script to yours

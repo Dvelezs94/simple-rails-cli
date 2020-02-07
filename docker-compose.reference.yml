@@ -3,13 +3,17 @@ services:
   db:
     image: postgres
     volumes:
-      - ./tmp/db:/var/lib/postgresql/data
+      - postgres-volume:/var/lib/postgresql/data
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        US_ID: $US_ID
+        GR_ID: $GR_ID
     command: bash -c "rm -f tmp/pids/server.pid && bundle install && bundle exec rails s -p 3000 -b '0.0.0.0'"
     volumes:
-      - .:/app
+      - .:/home/appuser/app
     env_file:
       - .env
     ports:
@@ -18,13 +22,14 @@ services:
       - db
 
   sidekiq:
-    image: project_app:latest
+    image: app-rails_app:latest
     command: bash -c "rm -f tmp/pids/server.pid && bundle install && bundle exec sidekiq"
     depends_on:
       - redis
       - db
+      - app
     volumes:
-      - .:/app
+      - .:/home/appuser/app
     env_file:
       - .env
 
@@ -38,9 +43,12 @@ services:
     ports:
       - 6379:6379
 
-  elasticsearch:
-    image: elasticsearch:6.4.2
-    ports:
-      - 9200:9200
-    environment:
-      - discovery.type=single-node
+  # elasticsearch:
+  #   image: elasticsearch:6.4.2
+  #   ports:
+  #     - 9200:9200
+  #   environment:
+  #     - discovery.type=single-node
+
+volumes:
+  postgres-volume:
